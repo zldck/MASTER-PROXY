@@ -1,171 +1,139 @@
-import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import Header from "@/components/Header";
-import { motion, AnimatePresence } from "framer-motion";
+// pages/browse-series.js
+import { useEffect, useState, useRef, useCallback } from 'react';
+import Head from 'next/head';
+import Link from 'next/link';
+import Header from '../components/Header';
 
-const genres = [
-  { name: "Most Popular", id: "popular" },
-  { name: "Most Rated", id: "top_rated" },
-  { name: "Action & Adventure", id: 10759 },
-  { name: "Animation", id: 16 },
-  { name: "Comedy", id: 35 },
-  { name: "Crime", id: 80 },
-  { name: "Documentary", id: 99 },
-  { name: "Drama", id: 18 },
-  { name: "Family", id: 10751 },
-  { name: "Kids", id: 10762 },
-  { name: "Mystery", id: 9648 },
-  { name: "News", id: 10763 },
-  { name: "Reality", id: 10764 },
-  { name: "Sci-Fi & Fantasy", id: 10765 },
-  { name: "Soap", id: 10766 },
-  { name: "Talk", id: 10767 },
-  { name: "War & Politics", id: 10768 },
-  { name: "Western", id: 37 },
+const API_KEY = 'b2b5c3479e0348c308499b783fb337b8';
+const GENRES = [
+  { id: 10759, name: 'Action & Adventure' },
+  { id: 35, name: 'Comedy' },
+  { id: 80, name: 'Crime' },
+  { id: 99, name: 'Documentary' },
+  { id: 18, name: 'Drama' },
+  { id: 10751, name: 'Family' },
+  { id: 10762, name: 'Kids' },
+  { id: 9648, name: 'Mystery' },
+  { id: 10763, name: 'News' },
+  { id: 10764, name: 'Reality' },
+  { id: 10765, name: 'Sci-Fi & Fantasy' },
+  { id: 10766, name: 'Soap' },
+  { id: 10767, name: 'Talk' },
+  { id: 10768, name: 'War & Politics' },
+  { id: 37, name: 'Western' },
 ];
 
-export default function BrowseSeriesPage() {
-  const [category, setCategory] = useState("popular");
-  const [items, setItems] = useState([]);
-  const [backdrop, setBackdrop] = useState(null);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const scrollContainerRef = useRef(null);
+export default function BrowseSeries() {
+  const [genreSeries, setGenreSeries] = useState({});
+  const [heroBackdrop, setHeroBackdrop] = useState('https://image.tmdb.org/t/p/original/xOjRNnQw5hqR1EULJ2iHkGwJVA4.jpg');
+  const [hoverTimer, setHoverTimer] = useState(null);
+  const [pageByGenre, setPageByGenre] = useState({});
+  const [loadingByGenre, setLoadingByGenre] = useState({});
+  const containerRefs = useRef({});
 
-  const fetchData = async (reset = false) => {
-    setLoading(true);
-    let url = "";
+  const fetchSeriesByGenre = useCallback((genreId, genreName, page = 1) => {
+    if (loadingByGenre[genreName]) return;
+    setLoadingByGenre(prev => ({ ...prev, [genreName]: true }));
 
-    if (category === "popular" || category === "top_rated") {
-      url = `https://api.themoviedb.org/3/tv/${category}?api_key=b2b5c3479e0348c308499b783fb337b8&page=${page}`;
-    } else {
-      url = `https://api.themoviedb.org/3/discover/tv?api_key=b2b5c3479e0348c308499b783fb337b8&with_genres=${category}&page=${page}`;
-    }
+    fetch(`https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&with_genres=${genreId}&page=${page}`)
+      .then(res => res.json())
+      .then(data => {
+        setGenreSeries(prev => ({
+          ...prev,
+          [genreName]: [...(prev[genreName] || []), ...data.results],
+        }));
+        setPageByGenre(prev => ({ ...prev, [genreName]: page + 1 }));
+        setLoadingByGenre(prev => ({ ...prev, [genreName]: false }));
+      });
+  }, [loadingByGenre]);
 
-    const res = await fetch(url);
-    const data = await res.json();
-    setItems((prev) => (reset ? data.results : [...prev, ...data.results]));
-    if (reset && data.results.length > 0) {
-      setBackdrop(data.results[0]);
-    }
-    setLoading(false);
+  useEffect(() => {
+    GENRES.forEach(genre => {
+      fetchSeriesByGenre(genre.id, genre.name);
+    });
+  }, [fetchSeriesByGenre]);
+
+  const handlePosterHover = (backdropPath) => {
+    clearTimeout(hoverTimer);
+    const timer = setTimeout(() => {
+      if (backdropPath) {
+        setHeroBackdrop(`https://image.tmdb.org/t/p/original${backdropPath}`);
+      }
+    }, 200);
+    setHoverTimer(timer);
   };
 
-  useEffect(() => {
-    setPage(1);
-    fetchData(true);
-  }, [category]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 &&
-        !loading
-      ) {
-        setPage((prev) => prev + 1);
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading]);
-
-  useEffect(() => {
-    if (page > 1) fetchData();
-  }, [page]);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  const handleScroll = (genreName, genreId) => {
+    const ref = containerRefs.current[genreName];
+    if (!ref) return;
+    const { scrollLeft, scrollWidth, clientWidth } = ref;
+    if (scrollLeft + clientWidth >= scrollWidth - 100) {
+      fetchSeriesByGenre(genreId, genreName, pageByGenre[genreName] || 2);
+    }
   };
 
   return (
-    <div ref={scrollContainerRef} className="min-h-screen bg-black text-white">
-      <Header />
+    <>
+      <Head><title>Browse Series • StreamTobi</title></Head>
 
-      {/* Hero Section */}
-      <div className="relative h-[60vh] w-full overflow-hidden">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={backdrop?.id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1, ease: "easeInOut" }}
-            className="absolute inset-0 w-full h-full"
-          >
-            {backdrop?.backdrop_path && (
-              <Image
-                src={`https://image.tmdb.org/t/p/original${backdrop.backdrop_path}`}
-                alt={backdrop.name}
-                layout="fill"
-                objectFit="cover"
-                priority
-                className="z-0"
-              />
-            )}
-            <div className="absolute inset-0 bg-black bg-opacity-50 z-10" />
-          </motion.div>
-        </AnimatePresence>
-      </div>
+      <div className="min-h-screen bg-black text-white overflow-y-auto">
+        <Header />
 
-      {/* Genre Buttons */}
-      <div className="px-4 py-6">
-        <div className="flex flex-wrap gap-2 mb-6 justify-center">
-          {genres.map((genre) => (
-            <button
-              key={genre.id}
-              onClick={() => setCategory(genre.id)}
-              className={`px-3 py-1 rounded-full border transition duration-300 font-medium text-sm ${
-                category === genre.id
-                  ? "bg-white text-black"
-                  : "bg-gray-800 text-white border-gray-600 hover:bg-white hover:text-black"
-              }`}
-            >
-              {genre.name}
-            </button>
-          ))}
+        {/* Hero Section */}
+        <div className="relative h-[60vh] w-full mb-8 transition-all duration-500 ease-in-out">
+          <img
+            src={heroBackdrop}
+            alt="hero backdrop"
+            className="w-full h-full object-cover object-top transition-all duration-700 ease-in-out"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
+          <div className="absolute bottom-10 left-6 sm:left-10">
+            <h1 className="text-3xl sm:text-5xl font-bold drop-shadow-xl">Discover Series by Genre</h1>
+            <p className="mt-2 text-sm text-gray-300 max-w-md">Explore trending and top-rated TV shows across genres and categories.</p>
+          </div>
         </div>
 
-        {/* Grid of Series */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              onMouseEnter={() => setBackdrop(item)}
-              className="cursor-pointer bg-gray-900 hover:bg-gray-800 rounded-xl overflow-hidden transition duration-300"
-            >
-              <Link href={`/details/tv/${item.id}`}>
-                <div>
-                  <Image
-                    src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
-                    alt={item.name}
-                    width={500}
-                    height={750}
-                    className="w-full h-auto"
-                  />
-                  <div className="p-2">
-                    <h2 className="text-sm font-semibold truncate">
-                      {item.name}
-                    </h2>
-                    <div className="text-xs text-gray-400 flex justify-between">
-                      <span>{(item.first_air_date || "").slice(0, 4)}</span>
-                      <span>⭐ {item.vote_average?.toFixed(1)}</span>
-                    </div>
-                  </div>
+        <main className="max-w-7xl mx-auto px-4 py-8 space-y-10">
+          {GENRES.map(genre => (
+            <section key={genre.id} className="space-y-4">
+              <h2 className="text-xl sm:text-2xl font-bold">{genre.name}</h2>
+              <div
+                className="overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing"
+                ref={el => containerRefs.current[genre.name] = el}
+                onScroll={() => handleScroll(genre.name, genre.id)}
+              >
+                <div className="flex gap-3 transition-transform duration-300 ease-in-out">
+                  {(genreSeries[genre.name] || []).map(tv => (
+                    <Link key={tv.id} href={`/details/series/${tv.id}`} legacyBehavior>
+                      <a
+                        className="flex-shrink-0 w-20 sm:w-24 md:w-28 lg:w-32"
+                        onMouseEnter={() => handlePosterHover(tv.backdrop_path)}
+                      >
+                        <img
+                          src={`https://image.tmdb.org/t/p/w500${tv.poster_path}`}
+                          alt={tv.name}
+                          className="rounded-md shadow-md hover:scale-105 transition duration-300 ease-in-out"
+                        />
+                        <p className="mt-2 text-xs sm:text-sm text-center line-clamp-1">{tv.name}</p>
+                      </a>
+                    </Link>
+                  ))}
                 </div>
-              </Link>
-            </div>
+              </div>
+            </section>
           ))}
-        </div>
+        </main>
       </div>
 
-      {/* Scroll To Top Button */}
-      <button
-        onClick={scrollToTop}
-        className="fixed bottom-6 right-6 bg-white text-black px-4 py-2 rounded-full shadow-lg hover:bg-gray-200 transition"
-      >
-        TOP
-      </button>
-    </div>
+      <style jsx global>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
+    </>
   );
 }

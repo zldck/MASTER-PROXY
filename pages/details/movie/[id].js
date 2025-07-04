@@ -1,8 +1,9 @@
 // pages/details/movie/[id].js
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import Head from 'next/head';
+import Header from '../../../components/Header';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const API_KEY = 'b2b5c3479e0348c308499b783fb337b8';
 
@@ -17,7 +18,6 @@ export default function MovieDetails() {
   useEffect(() => {
     if (!id) return;
 
-    // Get movie details
     fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${API_KEY}&language=en-US`)
       .then(res => res.json())
       .then(data => {
@@ -25,7 +25,6 @@ export default function MovieDetails() {
         setPoster(`https://image.tmdb.org/t/p/w500${data.poster_path}`);
       });
 
-    // Get logo image
     fetch(`https://api.themoviedb.org/3/movie/${id}/images?api_key=${API_KEY}`)
       .then(res => res.json())
       .then(data => {
@@ -33,12 +32,10 @@ export default function MovieDetails() {
         if (logoImage) setLogo(`https://image.tmdb.org/t/p/original${logoImage}`);
       });
 
-    // Get cast
     fetch(`https://api.themoviedb.org/3/movie/${id}/credits?api_key=${API_KEY}`)
       .then(res => res.json())
       .then(data => setCast(data.cast || []));
 
-    // Get trailer
     fetch(`https://api.themoviedb.org/3/movie/${id}/videos?api_key=${API_KEY}`)
       .then(res => res.json())
       .then(data => {
@@ -46,7 +43,6 @@ export default function MovieDetails() {
           data.results.find(v => v.site === 'YouTube' && v.type === 'Trailer') ||
           data.results.find(v => v.site === 'YouTube' && v.type === 'Teaser') ||
           data.results.find(v => v.site === 'YouTube');
-
         if (yt) setTrailer(`https://www.youtube.com/embed/${yt.key}`);
       });
   }, [id]);
@@ -58,45 +54,81 @@ export default function MovieDetails() {
   return (
     <>
       <Head><title>{movie.title} • StreamTobi</title></Head>
+      <div className="min-h-screen bg-black text-white">
+        <Header />
 
-      <div className="relative min-h-screen bg-cover bg-center" style={{ backgroundImage: `url(${backdrop})` }}>
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent z-0" />
+        {/* Hero Backdrop */}
+        <motion.div
+          className="relative h-[60vh] w-full overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          <img
+            src={backdrop}
+            alt={movie.title}
+            className="w-full h-full object-cover object-top"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+          <motion.h1
+            className="absolute bottom-20 left-10 text-4xl sm:text-6xl font-bold drop-shadow-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            {movie.title}
+          </motion.h1>
+        </motion.div>
 
-        {/* Header */}
-        <header className="relative z-10 flex items-center justify-between px-6 py-4 bg-black/80 border-b border-white/10">
-          <div className="space-x-4 text-sm">
-            <Link href="/" className="hover:text-red-400">🏠 Home</Link>
-            <Link href="/browse/movie" className="hover:text-red-400">🎞 Browse</Link>
-          </div>
-          <h1 className="text-xl font-bold italic tracking-wide">StreamTobi</h1>
-          <div className="w-24" />
-        </header>
+        <main className="max-w-5xl mx-auto px-6 py-10">
+          {logo && (
+            <motion.img
+              src={logo}
+              alt="Logo"
+              className="h-16 sm:h-24 w-auto mx-auto mb-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            />
+          )}
 
-        {/* Main Content */}
-        <main className="relative z-10 max-w-5xl mx-auto px-4 py-10 text-white text-center">
-          {/* Title Logo */}
-          {logo && <img src={logo} alt={movie.title} className="h-16 sm:h-24 w-auto mx-auto mb-4" />}
+          <p className="text-sm text-gray-300 mb-4 text-center">
+            {movie.release_date} • ⭐ {movie.vote_average?.toFixed(1)}/10
+          </p>
 
-          {/* Poster */}
-          {poster && <img src={poster} alt={movie.title} className="w-full md:w-1/3 rounded-lg shadow-md object-cover mx-auto hidden sm:block mb-6" />}
+          <AnimatePresence>
+            <motion.div
+              className="flex justify-center mb-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <a
+                href={`/frame/movie/${id}`}
+                className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded text-white font-semibold shadow transition"
+              >
+                Watch Now
+              </a>
+            </motion.div>
+          </AnimatePresence>
 
-          <h2 className="text-4xl font-bold">{movie.title}</h2>
-          <p className="text-sm text-gray-300 mt-2">{movie.release_date} • ⭐ {movie.vote_average?.toFixed(1)}/10</p>
+          <motion.p
+            className="mb-8 text-gray-300 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+          >
+            {movie.overview}
+          </motion.p>
 
-          {/* Play Button */}
-          <div className="flex justify-center mt-4 mb-6">
-            <Link href={`/frame/movie/${id}`}>
-              <button className="px-6 py-2 rounded-full bg-white text-black font-semibold text-sm flex items-center gap-2 transition-transform hover:scale-105">
-                ▶ WATCH NOW
-              </button>
-            </Link>
-          </div>
-
-          <p className="text-sm leading-relaxed pb-6 max-w-3xl mx-auto">{movie.overview}</p>
-
-          {/* Trailer */}
           {trailer && (
-            <div className="aspect-video w-full max-w-3xl mx-auto rounded-lg overflow-hidden shadow-lg">
+            <motion.div
+              className="aspect-video w-full max-w-3xl mx-auto rounded-lg overflow-hidden shadow-lg mb-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+            >
               <iframe
                 src={trailer}
                 title="Trailer"
@@ -104,12 +136,24 @@ export default function MovieDetails() {
                 loading="lazy"
                 className="w-full h-full"
               />
-            </div>
+            </motion.div>
           )}
 
           {/* Cast */}
-          <h3 className="text-2xl font-semibold mt-10">Cast</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 mt-6 px-4">
+          <motion.h3
+            className="text-2xl font-semibold text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.9 }}
+          >
+            Cast
+          </motion.h3>
+          <motion.div
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6 mt-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.0 }}
+          >
             {cast.slice(0, 12).map(actor => (
               <div key={actor.id} className="flex flex-col items-center">
                 <img
@@ -117,11 +161,11 @@ export default function MovieDetails() {
                   alt={actor.name}
                   className="w-24 h-24 rounded-full object-cover shadow-md"
                 />
-                <p className="mt-2 text-sm font-medium">{actor.name}</p>
-                <p className="text-xs text-gray-400">as {actor.character}</p>
+                <p className="mt-2 text-sm font-medium text-center">{actor.name}</p>
+                <p className="text-xs text-gray-400 text-center">as {actor.character}</p>
               </div>
             ))}
-          </div>
+          </motion.div>
         </main>
       </div>
     </>

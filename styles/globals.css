@@ -5,3 +5,15 @@
 body {
   @apply bg-black text-white;
 }
+
+
+/* globals.css or tailwind.config.css custom utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+
+

@@ -1,121 +1,106 @@
-// pages/browse-movie.js
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Header from '../components/Header';
 
 const API_KEY = 'b2b5c3479e0348c308499b783fb337b8';
-const GENRES = [
+
+const genreList = [
   { id: 28, name: 'Action' },
-  { id: 35, name: 'Comedy' },
-  { id: 27, name: 'Horror' },
   { id: 16, name: 'Animation' },
+  { id: 27, name: 'Horror' },
+  { id: 35, name: 'Comedy' },
   { id: 18, name: 'Drama' },
-  { id: 878, name: 'Sci-Fi' },
   { id: 10749, name: 'Romance' },
-  { id: 10752, name: 'War' },
-  { id: 99, name: 'Documentary' },
+  { id: 878, name: 'Sci-Fi' },
   { id: 12, name: 'Adventure' },
-  { id: 14, name: 'Fantasy' },
-  { id: 9648, name: 'Mystery' },
-  { id: 80, name: 'Crime' },
   { id: 53, name: 'Thriller' },
-  { id: 10402, name: 'Music' },
-  { id: 10770, name: 'TV Movie' },
+  { id: 9648, name: 'Mystery' },
+  { id: 10751, name: 'Family' },
 ];
 
+const prioritizedGenres = ['Action', 'Animation', 'Horror'];
+
+function shuffleAndLimitGenres(allGenres, limit) {
+  const remaining = allGenres.filter(g => !prioritizedGenres.includes(g.name));
+  const shuffled = remaining.sort(() => 0.5 - Math.random()).slice(0, limit - prioritizedGenres.length);
+  return [...prioritizedGenres.map(name => allGenres.find(g => g.name === name)), ...shuffled];
+}
+
 export default function BrowseMovie() {
-  const [genreMovies, setGenreMovies] = useState({});
-  const [heroBackdrop, setHeroBackdrop] = useState('https://image.tmdb.org/t/p/original/zK2sFxFEFsLCG1lHVeLXMZ0DAsI.jpg');
-  const [hoverTimer, setHoverTimer] = useState(null);
-  const [pageByGenre, setPageByGenre] = useState({});
-  const [loadingByGenre, setLoadingByGenre] = useState({});
+  const [genres, setGenres] = useState([]);
+  const [moviesByGenre, setMoviesByGenre] = useState({});
+  const [heroMovie, setHeroMovie] = useState(null);
   const containerRefs = useRef({});
 
-  const fetchMoviesByGenre = useCallback((genreId, genreName, page = 1) => {
-    if (loadingByGenre[genreName]) return;
-    setLoadingByGenre(prev => ({ ...prev, [genreName]: true }));
+  useEffect(() => {
+    const selectedGenres = shuffleAndLimitGenres(genreList, 5);
+    setGenres(selectedGenres);
 
-    fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${genreId}&page=${page}`)
-      .then(res => res.json())
-      .then(data => {
-        setGenreMovies(prev => ({
-          ...prev,
-          [genreName]: [...(prev[genreName] || []), ...data.results],
-        }));
-        setPageByGenre(prev => ({ ...prev, [genreName]: page + 1 }));
-        setLoadingByGenre(prev => ({ ...prev, [genreName]: false }));
-      });
-  }, [loadingByGenre]);
+    selectedGenres.forEach((genre) => {
+      fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&with_genres=${genre.id}`)
+        .then(res => res.json())
+        .then(data => {
+          setMoviesByGenre(prev => ({
+            ...prev,
+            [genre.name]: data.results.slice(0, 15),
+          }));
+        });
+    });
+  }, []);
 
   useEffect(() => {
-    GENRES.forEach(genre => {
-      fetchMoviesByGenre(genre.id, genre.name);
-    });
-  }, [fetchMoviesByGenre]);
-
-  const handlePosterHover = (backdropPath) => {
-    clearTimeout(hoverTimer);
-    const timer = setTimeout(() => {
-      if (backdropPath) {
-        setHeroBackdrop(`https://image.tmdb.org/t/p/original${backdropPath}`);
-      }
-    }, 200);
-    setHoverTimer(timer);
-  };
-
-  const handleScroll = (genreName, genreId) => {
-    const ref = containerRefs.current[genreName];
-    if (!ref) return;
-    const { scrollLeft, scrollWidth, clientWidth } = ref;
-    if (scrollLeft + clientWidth >= scrollWidth - 100) {
-      fetchMoviesByGenre(genreId, genreName, pageByGenre[genreName] || 2);
-    }
-  };
+    fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`)
+      .then(res => res.json())
+      .then(data => {
+        const random = data.results[Math.floor(Math.random() * data.results.length)];
+        setHeroMovie(random);
+      });
+  }, []);
 
   return (
     <>
-      <Head><title>Browse Movies • StreamTobi</title></Head>
+      <Head>
+        <title>StreamTobi • Browse Movies</title>
+      </Head>
 
-      <div className="min-h-screen bg-black text-white overflow-y-auto">
+      <div className="min-h-screen bg-black text-white">
         <Header />
 
-        {/* Hero Section */}
-        <div className="relative h-[60vh] w-full mb-8 transition-all duration-500 ease-in-out">
-          <img
-            src={heroBackdrop}
-            alt="hero backdrop"
-            className="w-full h-full object-cover object-top transition-all duration-700 ease-in-out"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
-          <div className="absolute bottom-10 left-6 sm:left-10">
-            <h1 className="text-3xl sm:text-5xl font-bold drop-shadow-xl">Discover Movies by Genre</h1>
-            <p className="mt-2 text-sm text-gray-300 max-w-md">Explore trending and popular films categorized in genres to suit your mood.</p>
-          </div>
+        <div className="w-full h-[60vh] relative mb-8">
+          {heroMovie && (
+            <div className="absolute inset-0">
+              <img
+                src={`https://image.tmdb.org/t/p/original${heroMovie.backdrop_path}`}
+                alt={heroMovie.title}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+              <div className="absolute bottom-10 left-10 text-3xl sm:text-5xl font-bold max-w-xl drop-shadow-xl">
+                {heroMovie.title}
+              </div>
+            </div>
+          )}
         </div>
 
-        <main className="max-w-7xl mx-auto px-4 py-8 space-y-10">
-          {GENRES.map(genre => (
-            <section key={genre.id} className="space-y-4">
-              <h2 className="text-xl sm:text-2xl font-bold">{genre.name}</h2>
+        <main className="max-w-7xl mx-auto px-6 space-y-12 pb-20">
+          {genres.map((genre) => (
+            <section key={genre.id}>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4">{genre.name}</h2>
               <div
-                className="overflow-x-auto hide-scrollbar cursor-grab active:cursor-grabbing"
+                className="overflow-x-auto hide-scrollbar"
                 ref={el => containerRefs.current[genre.name] = el}
-                onScroll={() => handleScroll(genre.name, genre.id)}
               >
-                <div className="flex gap-3 transition-transform duration-300 ease-in-out">
-                  {(genreMovies[genre.name] || []).map(movie => (
+                <div className="flex gap-4 min-w-max">
+                  {(moviesByGenre[genre.name] || []).slice(0, 15).map(movie => (
                     <Link key={movie.id} href={`/details/movie/${movie.id}`} legacyBehavior>
-                      <a
-                        className="flex-shrink-0 w-20 sm:w-24 md:w-28 lg:w-32"
-                        onMouseEnter={() => handlePosterHover(movie.backdrop_path)}
-                      >
+                      <a className="w-40 flex-shrink-0">
                         <img
                           src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
                           alt={movie.title}
-                          className="rounded-md shadow-md hover:scale-105 transition duration-300 ease-in-out"
+                          className="w-full h-auto rounded-lg shadow-md hover:scale-105 transition"
                         />
-                        <p className="mt-2 text-xs sm:text-sm text-center line-clamp-1">{movie.title}</p>
+                        <p className="mt-2 text-sm text-center line-clamp-1">{movie.title}</p>
                       </a>
                     </Link>
                   ))}

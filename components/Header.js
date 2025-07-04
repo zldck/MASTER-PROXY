@@ -6,6 +6,7 @@ import { FiMenu, FiX } from 'react-icons/fi';
 export default function Header() {
   const [hovering, setHovering] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -16,24 +17,34 @@ export default function Header() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm.length > 1) {
+        fetch(`https://api.themoviedb.org/3/search/multi?api_key=b2b5c3479e0348c308499b783fb337b8&query=${searchTerm}`)
+          .then(res => res.json())
+          .then(data => setSearchResults(data.results || []));
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
   return (
     <header className="sticky top-0 z-50 backdrop-blur bg-black/70 border-b border-white/10 text-white px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
-        {/* Left: Brand */}
         <div className="text-xl font-bold tracking-wide">
           <Link href="/" passHref legacyBehavior>
             <a>StreamTobi</a>
           </Link>
         </div>
 
-        {/* Mobile Menu Toggle */}
         <div className="sm:hidden">
           <button onClick={() => setMenuOpen(!menuOpen)} className="text-white">
             {menuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
           </button>
         </div>
 
-        {/* Desktop Search and Nav */}
         <div className="hidden sm:flex flex-1 items-center justify-end space-x-6">
           <nav className="flex space-x-4 text-sm items-center">
             <Link href="/" passHref legacyBehavior>
@@ -64,8 +75,7 @@ export default function Header() {
             </div>
           </nav>
 
-          {/* Search Bar */}
-          <div className="w-full max-w-sm">
+          <div className="relative w-full max-w-sm">
             <input
               type="text"
               placeholder="Search movies or series..."
@@ -73,10 +83,24 @@ export default function Header() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full focus:outline-none focus:ring focus:border-red-500 placeholder:text-gray-400"
             />
+            {searchResults.length > 0 && (
+              <div className="absolute z-50 top-full mt-2 w-full bg-black/90 rounded shadow-lg max-h-60 overflow-y-auto text-sm">
+                {searchResults.map(result => (
+                  <Link
+                    key={result.id}
+                    href={`/details/${result.media_type === 'tv' ? 'series' : 'movie'}/${result.id}`}
+                    legacyBehavior
+                  >
+                    <a className="block px-4 py-2 hover:bg-red-600 transition">
+                      {result.title || result.name}
+                    </a>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu with animation */}
         <div
           className={`w-full overflow-hidden transition-all duration-500 ease-in-out sm:hidden ${menuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}
         >
@@ -88,6 +112,21 @@ export default function Header() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full focus:outline-none focus:ring focus:border-red-500 placeholder:text-gray-400"
             />
+            {searchResults.length > 0 && (
+              <div className="bg-black/90 rounded shadow-lg max-h-64 overflow-y-auto">
+                {searchResults.map(result => (
+                  <Link
+                    key={result.id}
+                    href={`/details/${result.media_type === 'tv' ? 'series' : 'movie'}/${result.id}`}
+                    legacyBehavior
+                  >
+                    <a className="block px-4 py-2 hover:bg-red-600 transition">
+                      {result.title || result.name}
+                    </a>
+                  </Link>
+                ))}
+              </div>
+            )}
             <Link href="/" passHref legacyBehavior>
               <a>Home</a>
             </Link>

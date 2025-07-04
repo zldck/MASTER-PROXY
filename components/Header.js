@@ -33,11 +33,15 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur bg-black/70 border-b border-white/10 text-white px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
-        <div className="text-xl font-bold tracking-wide">
-          <Link href="/" passHref legacyBehavior>
-            <a>StreamTobi</a>
-          </Link>
-        </div>
+        <div className="flex items-center space-x-2">
+  <Link href="/" passHref legacyBehavior>
+    <a className="flex items-center space-x-2">
+      <img src="/logo.png" alt="StreamTobi Logo" className="h-8 w-auto" />
+      <span className="text-xl font-bold tracking-wide">StreamTobi</span>
+    </a>
+  </Link>
+</div>
+
 
         <div className="sm:hidden">
           <button onClick={() => setMenuOpen(!menuOpen)} className="text-white">

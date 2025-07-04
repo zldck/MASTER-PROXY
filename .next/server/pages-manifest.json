@@ -3,7 +3,8 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/browse-series": "pages/browse-series.js",
-  "/movie": "pages/movie.js",
   "/": "pages/index.js",
-  "/browse-movie": "pages/browse-movie.js"
+  "/movie": "pages/movie.js",
+  "/browse-movie": "pages/browse-movie.js",
+  "/series": "pages/series.js"
 }

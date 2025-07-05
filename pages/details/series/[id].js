@@ -1,6 +1,5 @@
-// pages/details/series/[id].js
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import Header from '../../../components/Header';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +15,37 @@ export default function SeriesDetail() {
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [showSeasonDropdown, setShowSeasonDropdown] = useState(false);
   const [showEpisodeDropdown, setShowEpisodeDropdown] = useState(false);
+
+  const seasonRef = useRef(null);
+  const episodeRef = useRef(null);
+  const [dropUpSeason, setDropUpSeason] = useState(false);
+  const [dropUpEpisode, setDropUpEpisode] = useState(false);
+
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const checkDropDirection = (ref, setter) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setter(spaceBelow < 200);
+  };
+
+  const handleToggle = (type) => {
+    if (type === 'season') {
+      setShowSeasonDropdown(prev => !prev);
+      checkDropDirection(seasonRef, setDropUpSeason);
+    } else {
+      setShowEpisodeDropdown(prev => !prev);
+      checkDropDirection(episodeRef, setDropUpEpisode);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -53,7 +83,6 @@ export default function SeriesDetail() {
       <div className="min-h-screen bg-black text-white">
         <Header />
 
-        {/* Hero Backdrop */}
         {series.backdrop_path && (
           <motion.div
             className="relative h-[60vh] w-full overflow-hidden"
@@ -91,19 +120,19 @@ export default function SeriesDetail() {
           {/* Season Dropdown */}
           <div
             className="relative inline-block mb-6 z-20"
-            onMouseEnter={() => setShowSeasonDropdown(true)}
-            onMouseLeave={() => setShowSeasonDropdown(false)}
+            ref={seasonRef}
+            onMouseEnter={() => !isMobile && (setShowSeasonDropdown(true), checkDropDirection(seasonRef, setDropUpSeason))}
+            onMouseLeave={() => !isMobile && setShowSeasonDropdown(false)}
+            onClick={() => isMobile && handleToggle('season')}
           >
-            <button
-              className="bg-gray-900 text-white px-4 py-2 rounded-full shadow hover:bg-gray-800 transition-all duration-200 flex items-center gap-2"
-            >
+            <button className="bg-gray-900 text-white px-4 py-2 rounded-full shadow hover:bg-gray-800 transition-all duration-200 flex items-center gap-2">
               Season {selectedSeason} ▾
             </button>
 
             <AnimatePresence>
               {showSeasonDropdown && (
                 <motion.ul
-                  className="absolute left-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-lg overflow-hidden"
+                  className={`absolute left-0 ${dropUpSeason ? 'bottom-full mb-2' : 'top-full mt-2'} w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-lg overflow-hidden`}
                   style={{ scrollbarWidth: 'none' }}
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -113,9 +142,7 @@ export default function SeriesDetail() {
                   {series.seasons.filter(s => s.season_number > 0).map(season => (
                     <li
                       key={season.id}
-                      className={`px-4 py-2 cursor-pointer hover:bg-red-600 transition-all duration-150 ${
-                        season.season_number === selectedSeason ? 'bg-red-600' : ''
-                      }`}
+                      className={`px-4 py-2 cursor-pointer hover:bg-red-600 transition-all duration-150 ${season.season_number === selectedSeason ? 'bg-red-600' : ''}`}
                       onClick={() => setSelectedSeason(season.season_number)}
                     >
                       Season {season.season_number}
@@ -130,19 +157,19 @@ export default function SeriesDetail() {
           {seasonData.length > 0 && (
             <div
               className="relative inline-block mb-8 z-10"
-              onMouseEnter={() => setShowEpisodeDropdown(true)}
-              onMouseLeave={() => setShowEpisodeDropdown(false)}
+              ref={episodeRef}
+              onMouseEnter={() => !isMobile && (setShowEpisodeDropdown(true), checkDropDirection(episodeRef, setDropUpEpisode))}
+              onMouseLeave={() => !isMobile && setShowEpisodeDropdown(false)}
+              onClick={() => isMobile && handleToggle('episode')}
             >
-              <button
-                className="bg-gray-900 text-white px-4 py-2 rounded-full shadow hover:bg-gray-800 transition-all duration-200 flex items-center gap-2"
-              >
+              <button className="bg-gray-900 text-white px-4 py-2 rounded-full shadow hover:bg-gray-800 transition-all duration-200 flex items-center gap-2">
                 Episode {selectedEpisode} ▾
               </button>
 
               <AnimatePresence>
                 {showEpisodeDropdown && (
                   <motion.ul
-                    className="absolute left-0 mt-2 w-64 max-h-[200px] overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg shadow-lg"
+                    className={`absolute left-0 ${dropUpEpisode ? 'bottom-full mb-2' : 'top-full mt-2'} w-64 max-h-[200px] overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg shadow-lg`}
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -157,9 +184,7 @@ export default function SeriesDetail() {
                     {seasonData.map(ep => (
                       <li
                         key={ep.id}
-                        className={`px-4 py-2 cursor-pointer hover:bg-red-600 transition-all duration-150 ${
-                          ep.episode_number === selectedEpisode ? 'bg-red-600' : ''
-                        }`}
+                        className={`px-4 py-2 cursor-pointer hover:bg-red-600 transition-all duration-150 ${ep.episode_number === selectedEpisode ? 'bg-red-600' : ''}`}
                         onClick={() => setSelectedEpisode(ep.episode_number)}
                       >
                         Ep {ep.episode_number}: {ep.name}
@@ -171,7 +196,6 @@ export default function SeriesDetail() {
             </div>
           )}
 
-          {/* Watch Button */}
           <AnimatePresence>
             {watchLink && (
               <motion.a

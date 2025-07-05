@@ -2,9 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
+  "/details/series/[id]": "pages/details/series/[id].js",
   "/series": "pages/series.js",
-  "/movie": "pages/movie.js",
-  "/": "pages/index.js",
-  "/details/movie/[id]": "pages/details/movie/[id].js",
-  "/frame/movie/[id]": "pages/frame/movie/[id].js"
+  "/frame/series/[id]": "pages/frame/series/[id].js"
 }

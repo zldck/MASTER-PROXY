@@ -10,11 +10,6 @@ globalThis.__BUILD_MANIFEST = {
   "rootMainFiles": [],
   "rootMainFilesTree": {},
   "pages": {
-    "/": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/index.js"
-    ],
     "/_app": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
@@ -25,20 +20,15 @@ globalThis.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/details/movie/[id]": [
+    "/details/series/[id]": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/details/movie/[id].js"
+      "static/chunks/pages/details/series/[id].js"
     ],
-    "/frame/movie/[id]": [
+    "/series": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/frame/movie/[id].js"
-    ],
-    "/movie": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/movie.js"
+      "static/chunks/pages/series.js"
     ]
   },
   "ampFirstPages": []

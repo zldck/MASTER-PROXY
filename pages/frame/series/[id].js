@@ -1,40 +1,60 @@
-// pages/frame/series/[id].js
 import { useRouter } from 'next/router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import Header from '../../../components/Header';
-import { Listbox, Transition } from '@headlessui/react';
-import { Fragment } from 'react';
 
 const API_KEY = 'b2b5c3479e0348c308499b783fb337b8';
 
 export default function FrameSeries() {
   const router = useRouter();
-  const { id, season, episode } = router.query;
+  const { id, season = '1', episode = '1' } = router.query;
 
-  const [series, setSeries] = useState(null);
+  const [show, setShow] = useState(null);
   const [logo, setLogo] = useState(null);
-  const [seasons, setSeasons] = useState([]);
-  const [episodes, setEpisodes] = useState([]);
-  const [selectedSeason, setSelectedSeason] = useState(null);
-  const [selectedEpisode, setSelectedEpisode] = useState(null);
-  const [hovered, setHovered] = useState(false);
-  const [dropdownUp, setDropdownUp] = useState({ season: false, episode: false });
+  const [isAnime, setIsAnime] = useState(false);
+  const [checked, setChecked] = useState(false);
+  const [fallback, setFallback] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [seasonList, setSeasonList] = useState([]);
+  const [episodeList, setEpisodeList] = useState([]);
 
-  const seasonBtnRef = useRef(null);
-  const episodeBtnRef = useRef(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [dropUpSeason, setDropUpSeason] = useState(false);
+  const [dropUpEpisode, setDropUpEpisode] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  const seasonRef = useRef();
+  const episodeRef = useRef();
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        seasonRef.current && !seasonRef.current.contains(e.target) &&
+        episodeRef.current && !episodeRef.current.contains(e.target)
+      ) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
+
     fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${API_KEY}&language=en-US`)
       .then(res => res.json())
       .then(data => {
-        setSeries(data);
-        setSeasons(data.seasons || []);
+        setShow(data);
+        const animeFlag = data.genres?.some(g =>
+          g.id === 16 || g.name.toLowerCase().includes('animation') || g.name.toLowerCase().includes('anime')
+        );
+        setIsAnime(animeFlag);
+        setChecked(true);
+        setSeasonList(data.seasons || []);
       });
 
-    fetch(`https://api.themoviedb.org/3/tv/${id}/images?api_key=${API_KEY}`)
+    fetch(`https://api.themoviedb.org/3/tv/${id}/images?api_key=${API_KEY}&include_image_language=en,null`)
       .then(res => res.json())
       .then(data => {
         const logos = data.logos || [];
@@ -45,160 +65,158 @@ export default function FrameSeries() {
   }, [id]);
 
   useEffect(() => {
-    if (season) setSelectedSeason(parseInt(season));
-    if (episode) setSelectedEpisode(parseInt(episode));
-  }, [season, episode]);
+    if (!id || !season) return;
 
-  useEffect(() => {
-    if (!id || selectedSeason === null) return;
-    fetch(`https://api.themoviedb.org/3/tv/${id}/season/${selectedSeason}?api_key=${API_KEY}`)
+    fetch(`https://api.themoviedb.org/3/tv/${id}/season/${season}?api_key=${API_KEY}&language=en-US`)
       .then(res => res.json())
       .then(data => {
-        setEpisodes(data.episodes || []);
+        setEpisodeList(data.episodes || []);
       });
-  }, [id, selectedSeason]);
+  }, [id, season]);
 
-  useEffect(() => {
-    const checkDropdown = () => {
-      if (seasonBtnRef.current) {
-        const rect = seasonBtnRef.current.getBoundingClientRect();
-        setDropdownUp(prev => ({ ...prev, season: rect.bottom + 250 > window.innerHeight }));
-      }
-      if (episodeBtnRef.current) {
-        const rect = episodeBtnRef.current.getBoundingClientRect();
-        setDropdownUp(prev => ({ ...prev, episode: rect.bottom + 250 > window.innerHeight }));
-      }
-    };
-    window.addEventListener('resize', checkDropdown);
-    checkDropdown();
-    return () => window.removeEventListener('resize', checkDropdown);
-  }, [episodes, seasons]);
+  const handleIframeError = () => {
+    setFallback(true);
+    setHasError(true);
+  };
 
-  const backdrop = series?.backdrop_path || series?.poster_path;
-  const streamUrl = selectedSeason && selectedEpisode
-    ? `https://vidfast.pro/tv/${id}/${selectedSeason}/${selectedEpisode}?autoPlay=true&theme=red&title=false`
-    : '';
+  const checkDropDirection = (ref, setter) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setter(spaceBelow < 200);
+  };
+
+  const src = isAnime && !fallback && !hasError
+    ? `https://vidlink.pro/tv/${id}/${season}/${episode}`
+    : `https://vidfast.pro/tv/${id}/${season}/${episode}`;
+
+  const backdrop = `https://image.tmdb.org/t/p/original${show?.backdrop_path || show?.poster_path}`;
+
+  const dropdownClass = (isOpen, dropUp) =>
+    `absolute ${dropUp ? 'bottom-full mb-2' : 'top-full mt-1'} w-44 max-h-64 overflow-y-auto scroll-hide bg-black border border-white/10 rounded-md shadow-xl text-white text-sm transform transition-all duration-300 ease-in-out origin-top z-50 ` +
+    (isOpen ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible');
 
   return (
     <>
       <Head>
-        <title>{series?.name} • StreamTobi</title>
+        <title>{show?.name} • StreamTobi</title>
+        <style>{`
+          .scroll-hide::-webkit-scrollbar { display: none; }
+          .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        `}</style>
       </Head>
 
-      <div
-        className="relative min-h-screen bg-cover bg-center text-white"
-        style={{ backgroundImage: `url(https://image.tmdb.org/t/p/original${backdrop})` }}
-      >
+      <div className="relative h-screen w-screen bg-cover bg-center text-white" style={{ backgroundImage: `url(${backdrop})` }}>
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/90 to-transparent z-0" />
-
         <Header />
 
-        <main className="relative z-10 max-w-7xl mx-auto px-4 py-10 flex flex-col lg:flex-row gap-8">
-          <div className="lg:w-3/4 w-full">
-            {series && selectedSeason && selectedEpisode && episodes.length > 0 ? (
+        <main className="relative z-10 max-w-7xl mx-auto px-4 py-10 flex flex-col lg:flex-row gap-8 min-h-[calc(100vh-80px)] overflow-hidden">
+          <div className="lg:w-3/4 w-full flex flex-col space-y-6">
+            <div className="rounded-xl overflow-hidden shadow-2xl">
               <iframe
-                key={streamUrl}
-                src={streamUrl}
+                key={`${id}-${season}-${episode}-${fallback}`}
+                src={src}
                 frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; cast"
+                scrolling="no"
+                allow="autoplay; fullscreen"
                 allowFullScreen
-                referrerPolicy="no-referrer"
-                loading="lazy"
-                className="w-full aspect-video rounded-lg shadow-xl"
+                className="w-full aspect-video"
+                onError={handleIframeError}
               />
-            ) : (
-              <div className="aspect-video w-full flex items-center justify-center text-gray-500 border border-gray-700 rounded-lg">
-                Select a season and episode.
+            </div>
+
+            <div className="flex flex-wrap items-center gap-6 text-white text-sm relative z-50 overflow-visible">
+              <div
+                ref={seasonRef}
+                className="relative"
+                onMouseEnter={() => { if (!isMobile) setOpenDropdown('season'); checkDropDirection(seasonRef, setDropUpSeason); }}
+                onMouseLeave={() => !isMobile && setOpenDropdown(null)}
+              >
+                <button
+                  className="bg-black border border-white/20 px-4 py-2 rounded-lg transition hover:border-white hover:text-red-400"
+                  onClick={() => {
+                    if (isMobile) {
+                      setOpenDropdown(openDropdown === 'season' ? null : 'season');
+                      checkDropDirection(seasonRef, setDropUpSeason);
+                    }
+                  }}
+                >
+                  Season {season}
+                </button>
+                <div className={dropdownClass(openDropdown === 'season', dropUpSeason)}>
+                  {seasonList.map((s) => (
+                    <button
+                      key={s.season_number}
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        router.push(`/frame/series/${id}?season=${s.season_number}&episode=1`);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-red-600 transition ${
+                        s.season_number === parseInt(season) ? 'text-red-400' : ''
+                      }`}
+                    >
+                      Season {s.season_number}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
 
-            <div
-              className={`flex flex-col sm:flex-row gap-4 mt-4 p-4 rounded transition-all duration-300 ease-in-out ${hovered ? 'bg-black/60' : 'bg-black/30'}`}
-              onMouseEnter={() => setHovered(true)}
-              onMouseLeave={() => setHovered(false)}
-            >
-              <Listbox value={selectedSeason} onChange={val => {
-                setSelectedSeason(val);
-                setSelectedEpisode(null);
-                router.push(`/frame/series/${id}?season=${val}`);
-              }}>
-                <div ref={seasonBtnRef} className="relative w-full sm:w-1/2">
-                  <Listbox.Button className="w-full bg-gray-900 text-white px-4 py-2 rounded shadow hover:bg-gray-800 transition">
-                    {selectedSeason ? `Season ${selectedSeason}` : 'Select Season'}
-                  </Listbox.Button>
-                  <Transition
-                    as={Fragment}
-                    enter="transition ease-in-out duration-300 transform"
-                    enterFrom="opacity-0 scale-95"
-                    enterTo="opacity-100 scale-100"
-                    leave="transition ease-in-out duration-200 transform"
-                    leaveFrom="opacity-100 scale-100"
-                    leaveTo="opacity-0 scale-95"
-                  >
-                    <Listbox.Options className={`absolute ${dropdownUp.season ? 'bottom-full mb-2' : 'top-full mt-1'} max-h-60 w-full overflow-hidden rounded-md bg-black/80 text-white shadow-lg ring-1 ring-white/10 z-50 backdrop-blur-sm overflow-y-auto no-scrollbar`}>
-                      {seasons.map(season => (
-                        <Listbox.Option
-                          key={season.id}
-                          value={season.season_number}
-                          className={({ active }) => `px-4 py-2 cursor-pointer ${active ? 'bg-red-600' : ''}`}
-                        >
-                          Season {season.season_number}
-                        </Listbox.Option>
-                      ))}
-                    </Listbox.Options>
-                  </Transition>
+              <div
+                ref={episodeRef}
+                className="relative"
+                onMouseEnter={() => { if (!isMobile) setOpenDropdown('episode'); checkDropDirection(episodeRef, setDropUpEpisode); }}
+                onMouseLeave={() => !isMobile && setOpenDropdown(null)}
+              >
+                <button
+                  className="bg-black border border-white/20 px-4 py-2 rounded-lg transition hover:border-white hover:text-red-400"
+                  onClick={() => {
+                    if (isMobile) {
+                      setOpenDropdown(openDropdown === 'episode' ? null : 'episode');
+                      checkDropDirection(episodeRef, setDropUpEpisode);
+                    }
+                  }}
+                >
+                  Episode {episode}
+                </button>
+                <div className={dropdownClass(openDropdown === 'episode', dropUpEpisode)}>
+                  {episodeList.map((ep) => (
+                    <button
+                      key={ep.episode_number}
+                      onClick={() => {
+                        setOpenDropdown(null);
+                        router.push(`/frame/series/${id}?season=${season}&episode=${ep.episode_number}`);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-red-600 transition ${
+                        ep.episode_number === parseInt(episode) ? 'text-red-400' : ''
+                      }`}
+                    >
+                      Ep {ep.episode_number} — {ep.name}
+                    </button>
+                  ))}
                 </div>
-              </Listbox>
-
-              <Listbox value={selectedEpisode} onChange={val => {
-                setSelectedEpisode(val);
-                router.push(`/frame/series/${id}?season=${selectedSeason}&episode=${val}`);
-              }}>
-                <div ref={episodeBtnRef} className="relative w-full sm:w-1/2">
-                  <Listbox.Button className="w-full bg-gray-900 text-white px-4 py-2 rounded shadow hover:bg-gray-800 transition">
-                    {selectedEpisode ? `Episode ${selectedEpisode}` : 'Select Episode'}
-                  </Listbox.Button>
-                  <Transition
-                    as={Fragment}
-                    enter="transition ease-in-out duration-300 transform"
-                    enterFrom="opacity-0 scale-95"
-                    enterTo="opacity-100 scale-100"
-                    leave="transition ease-in-out duration-200 transform"
-                    leaveFrom="opacity-100 scale-100"
-                    leaveTo="opacity-0 scale-95"
-                  >
-                    <Listbox.Options className={`absolute ${dropdownUp.episode ? 'bottom-full mb-2' : 'top-full mt-1'} max-h-60 w-full overflow-hidden rounded-md bg-black/80 text-white shadow-lg ring-1 ring-white/10 z-50 backdrop-blur-sm overflow-y-auto no-scrollbar`}>
-                      {episodes.map(ep => (
-                        <Listbox.Option
-                          key={ep.id}
-                          value={ep.episode_number}
-                          className={({ active }) => `px-4 py-2 cursor-pointer ${active ? 'bg-red-600' : ''}`}
-                        >
-                          Episode {ep.episode_number}: {ep.name}
-                        </Listbox.Option>
-                      ))}
-                    </Listbox.Options>
-                  </Transition>
-                </div>
-              </Listbox>
+              </div>
             </div>
           </div>
 
-          <div className="lg:w-1/4 space-y-6 mb-8 text-gray-300">
-            <div className="flex justify-center">
+          <div className="lg:w-1/4 w-full space-y-6 overflow-hidden">
+            <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 shadow-xl transition-all duration-300 ease-in-out">
               {logo && (
-                <img
-                  className="w-48 h-auto object-contain mx-auto sm:w-64"
-                  src={logo}
-                  alt={series?.name}
-                />
+                <div className="flex justify-center mb-4">
+                  <img className="w-48 h-auto object-contain transition duration-500 ease-in-out" src={logo} alt={show?.name} />
+                </div>
               )}
+              {show && (
+                <div className="flex items-center justify-center gap-4 text-sm text-gray-300">
+                  <span className="text-red-400">
+                    ⭐ {typeof show.vote_average === 'number' ? show.vote_average.toFixed(2) : 'N/A'} / 10
+                  </span>
+                  <span>{show.first_air_date || 'Unknown'}</span>
+                </div>
+              )}
+              <p className="text-sm text-gray-300 mt-4 text-center leading-relaxed">
+                {show?.overview}
+              </p>
             </div>
-            <div className="flex items-center space-x-4 justify-center text-sm">
-              <span className="flex items-center text-red-400">⭐ {series?.vote_average?.toFixed(2)} / 10</span>
-              <span>{series?.first_air_date}</span>
-            </div>
-            <p className="text-sm text-center">{series?.overview}</p>
           </div>
         </main>
       </div>

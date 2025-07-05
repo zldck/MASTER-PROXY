@@ -1,4 +1,3 @@
-// components/Header.js
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FiMenu, FiX } from 'react-icons/fi';
@@ -37,7 +36,8 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 backdrop-blur bg-black/70 border-b border-white/10 text-white px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
-        {/* Left: Brand */}
+
+        {/* Brand */}
         <div className="text-xl font-bold tracking-wide">
           <Link href="/" passHref legacyBehavior>
             <a>StreamTobi</a>
@@ -51,13 +51,17 @@ export default function Header() {
           </button>
         </div>
 
-        {/* Desktop Search and Nav */}
+        {/* Desktop Navigation */}
         <div className="hidden sm:flex flex-1 items-center justify-end space-x-6 relative">
           <nav className="flex space-x-4 text-sm items-center">
             <Link href="/" passHref legacyBehavior><a>Home</a></Link>
             <Link href="/movie" passHref legacyBehavior><a>Movies</a></Link>
             <Link href="/series" passHref legacyBehavior><a>Series</a></Link>
-            <div onMouseEnter={() => setHovering(true)} onMouseLeave={() => setHovering(false)} className="relative">
+            <div
+              onMouseEnter={() => setHovering(true)}
+              onMouseLeave={() => setHovering(false)}
+              className="relative"
+            >
               <button className="hover:text-red-400 transition">Browse</button>
               <div className={`absolute top-full left-0 mt-1 w-40 bg-black border border-white/10 rounded-md shadow-lg text-white text-sm transition-all duration-300 ease-in-out overflow-hidden ${hovering ? 'opacity-100 scale-100 visible' : 'opacity-0 scale-95 invisible'}`}>
                 <Link href="/browse-movie" passHref legacyBehavior>
@@ -106,16 +110,42 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu */}
-        <div className={`w-full overflow-hidden transition-all duration-500 ease-in-out sm:hidden ${menuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'}`}>
+        {/* Mobile Navigation & Search */}
+        <div className={`w-full transition-all duration-500 ease-in-out sm:hidden ${menuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
           <div className="flex flex-col mt-3 text-sm space-y-2">
-            <input
-              type="text"
-              placeholder="Search movies or series..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full focus:outline-none focus:ring focus:border-red-500 placeholder:text-gray-400"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search movies or series..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full focus:outline-none focus:ring focus:border-red-500 placeholder:text-gray-400"
+              />
+              {suggestions.length > 0 && (
+                <div className="absolute top-full left-0 w-full bg-black border border-white/10 mt-1 rounded-md max-h-96 overflow-y-auto z-50">
+                  {suggestions.map(item => (
+                    <Link
+                      key={item.id}
+                      href={`/details/${item.media_type === 'movie' ? 'movie' : 'series'}/${item.id}`}
+                      legacyBehavior
+                    >
+                      <a className="flex items-center gap-3 px-4 py-2 hover:bg-red-600 transition text-sm">
+                        <img
+                          src={`https://image.tmdb.org/t/p/w92${item.poster_path || item.backdrop_path}`}
+                          alt={item.title || item.name}
+                          className="w-10 h-14 object-cover rounded-md"
+                        />
+                        <div>
+                          <div>{item.title || item.name} ({(item.release_date || item.first_air_date || '').slice(0, 4)})</div>
+                          <div className="text-gray-400 text-xs">{item.media_type === 'movie' ? 'Movie' : 'Series'}</div>
+                        </div>
+                      </a>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <Link href="/" passHref legacyBehavior><a>Home</a></Link>
             <Link href="/movie" passHref legacyBehavior><a>Movies</a></Link>
             <Link href="/series" passHref legacyBehavior><a>Series</a></Link>

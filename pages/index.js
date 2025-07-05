@@ -16,10 +16,30 @@ export default function Home() {
   const swiperRef = useRef(null);
 
   useEffect(() => {
-    fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`)
-      .then(res => res.json())
-      .then(data => setMovies(data.results || []));
-  }, []);
+  const fetchData = async () => {
+    const res = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`);
+    const data = await res.json();
+    const allMovies = data.results || [];
+
+    // Get watched genre IDs from localStorage
+    const watchedGenres = JSON.parse(localStorage.getItem('watchedGenres')) || [];
+
+    // Prioritize movies that match the user's watched genres
+    const prioritized = allMovies.filter(movie =>
+      movie.genre_ids?.some(id => watchedGenres.includes(id))
+    );
+
+    // Final movie list: matching genres first, then the rest
+    const sortedMovies = prioritized.length > 0
+      ? [...prioritized, ...allMovies.filter(m => !prioritized.includes(m))]
+      : allMovies;
+
+    setMovies(sortedMovies);
+  };
+
+  fetchData();
+}, []);
+
 
   return (
     <>

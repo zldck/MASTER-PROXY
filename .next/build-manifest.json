@@ -28,20 +28,20 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
-    "/browse-movie": [
+    "/details/movie/[id]": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
-      "static/chunks/pages/browse-movie.js"
+      "static/chunks/pages/details/movie/[id].js"
+    ],
+    "/frame/movie/[id]": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/frame/movie/[id].js"
     ],
     "/movie": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/movie.js"
-    ],
-    "/series": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/series.js"
     ]
   },
   "ampFirstPages": []
